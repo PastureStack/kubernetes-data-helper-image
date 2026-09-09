@@ -132,4 +132,5 @@ jobs:
           docker logout ghcr.io >/dev/null 2>&1
           docker image rm -f "$TARGET_REPOSITORY:$GITHUB_REF_NAME" "$TRIVY_IMAGE" >/dev/null 2>&1
           docker volume rm -f "pasturestack-kdh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >/dev/null 2>&1
-          rm -rf -- evidence "$RUNNER_TEMP/trivy-cache"
+          rm -rf -- evidence
+          sudo rm -rf -- "$RUNNER_TEMP/trivy-cache"
