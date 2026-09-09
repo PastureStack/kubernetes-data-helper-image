@@ -1,0 +1,111 @@
+name: Build, smoke test, and security evidence
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kubernetes-data-helper-security-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-test-sbom:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CANDIDATE_IMAGE: local/pasturestack/kubernetes-data-helper-image:${{ github.sha }}
+      TRIVY_IMAGE: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          bash scripts/validate
+          git diff --check
+
+      - name: Build and smoke-test the exact image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --pull \
+            --build-arg IMAGE_VERSION=v0.1.2 \
+            --build-arg SOURCE_REVISION="$GITHUB_SHA" \
+            --tag "$CANDIDATE_IMAGE" .
+          test "$(docker image inspect --format '{{.Config.User}}' "$CANDIDATE_IMAGE")" = 65532:65532
+          test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$CANDIDATE_IMAGE")" = '["/bin/true"]'
+          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$CANDIDATE_IMAGE")" = v0.1.2
+          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$CANDIDATE_IMAGE")" = "$GITHUB_SHA"
+          test "$(docker image inspect --format '{{json .Config.ExposedPorts}}' "$CANDIDATE_IMAGE")" = null
+          volume="pasturestack-kdh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker volume create "$volume" >/dev/null
+          trap 'docker volume rm -f "$volume" >/dev/null 2>&1 || true' EXIT
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true --volume "$volume:/data" \
+            "$CANDIDATE_IMAGE"
+          docker volume inspect "$volume" >/dev/null
+          docker run --rm --entrypoint /bin/sh "$CANDIDATE_IMAGE" \
+            -c 'test ! -e /usr/bin/pebble && test -r /usr/share/licenses/pasturestack-kubernetes-data-helper-image/LICENSE'
+          docker volume rm "$volume" >/dev/null
+          trap - EXIT
+
+      - name: Scan runtime and generate release evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence "$RUNNER_TEMP/trivy-cache"
+          docker pull "$TRIVY_IMAGE" >/dev/null
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "$PWD/evidence:/evidence" \
+            --volume "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image --scanners vuln,secret \
+            --severity CRITICAL,HIGH --exit-code 1 --format json \
+            --output /evidence/runtime-security.json "$CANDIDATE_IMAGE"
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "$PWD/evidence:/evidence" \
+            --volume "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image --format cyclonedx \
+            --output /evidence/runtime.cdx.json "$CANDIDATE_IMAGE"
+          docker run --rm --entrypoint /usr/bin/dpkg-query "$CANDIDATE_IMAGE" \
+            -W '-f=${binary:Package}\t${Version}\n' \
+            | LC_ALL=C sort > evidence/runtime-ubuntu-packages.tsv
+          jq -e '.bomFormat == "CycloneDX" and (.components | length > 0)' \
+            evidence/runtime.cdx.json >/dev/null
+          jq -e '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL" or .Severity == "HIGH")] | length == 0' \
+            evidence/runtime-security.json >/dev/null
+          jq -e '[.Results[]?.Secrets[]?] | length == 0' evidence/runtime-security.json >/dev/null
+          sha256sum evidence/runtime-security.json evidence/runtime.cdx.json \
+            evidence/runtime-ubuntu-packages.tsv | LC_ALL=C sort -k2 > evidence/SHA256SUMS
+
+      - name: Upload reviewed evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kubernetes-data-helper-security-${{ github.sha }}
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Clean run-owned resources
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          docker ps -aq --filter "ancestor=$CANDIDATE_IMAGE" | xargs -r docker rm -f
+          docker image rm -f "$CANDIDATE_IMAGE" "$TRIVY_IMAGE" >/dev/null 2>&1
+          docker volume rm -f "pasturestack-kdh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >/dev/null 2>&1
+          rm -rf -- evidence
+          sudo rm -rf -- "$RUNNER_TEMP/trivy-cache"

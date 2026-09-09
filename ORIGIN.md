@@ -4,10 +4,13 @@ This repository preserves its complete pre-migration Git history. Commit `03bb31
 
 The maintenance image was created to replace the historical `busybox` data helper used by a legacy Kubernetes catalog while preserving its one-shot, successful-exit behavior. It was not published by the platform vendor, SUSE, or the Kubernetes project.
 
-The PastureStack repository and image name are:
+The PastureStack repository is:
 
 - Repository: `PastureStack/kubernetes-data-helper-image`
-- Release image: `ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.1-pasturestack.1`
+
+The maintained image uses the pure numeric release `v0.1.2`. Earlier
+non-numeric compatibility releases remain immutable historical evidence; their
+qualifiers are intentionally not reused or advertised as current coordinates.
 
 Historical names and image references may appear in this file, compatibility documentation, preserved Git history, and source attribution. They identify origins or compatibility targets and do not imply sponsorship or endorsement.
 

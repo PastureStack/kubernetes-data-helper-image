@@ -10,13 +10,15 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Release image
 
-The reviewed `linux/amd64` release used by the catalog is:
+The maintained release uses a pure numeric semantic version:
 
 ```text
-ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.1-pasturestack.1
+ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.2
 ```
 
-The catalog uses this semantic version tag. Release evidence records the immutable digest separately so a long digest never appears in the user interface.
+Release evidence records the immutable digest separately so a long digest never
+appears in the user interface. Earlier non-numeric releases remain immutable
+historical evidence and must not be copied into new release names.
 
 ## Build
 
@@ -24,9 +26,9 @@ Build the reviewed source tree:
 
 ```sh
 docker build --pull \
-  --build-arg IMAGE_VERSION=v0.1.1-pasturestack.1 \
+  --build-arg IMAGE_VERSION=v0.1.2 \
   --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" \
-  --tag ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.1-pasturestack.1 \
+  --tag local/pasturestack/kubernetes-data-helper-image:v0.1.2 \
   .
 ```
 
@@ -40,7 +42,7 @@ Run the image with the constraints supplied by the historical catalog and verify
 docker run --rm \
   --network none \
   --volume pasturestack-kubernetes-data-helper-poc:/data \
-  ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.1-pasturestack.1
+  local/pasturestack/kubernetes-data-helper-image:v0.1.2
 test "$?" -eq 0
 ```
 

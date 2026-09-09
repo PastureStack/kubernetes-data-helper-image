@@ -1,7 +1,7 @@
 ARG UBUNTU_IMAGE=ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b
 FROM ${UBUNTU_IMAGE}
 
-ARG IMAGE_VERSION=v0.1.1-pasturestack.1
+ARG IMAGE_VERSION=v0.1.2
 ARG SOURCE_REVISION=unknown
 
 LABEL org.opencontainers.image.title="PastureStack/kubernetes-data-helper-image" \
