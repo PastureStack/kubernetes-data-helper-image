@@ -23,7 +23,7 @@ Run this test on a Docker-capable validation host from a clean copy of the repos
 ```sh
 set -eu
 
-image='ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.1-pasturestack.1'
+image='local/pasturestack/kubernetes-data-helper-image:v0.1.2'
 volume='pasturestack-kubernetes-data-helper-poc'
 
 cleanup() {
