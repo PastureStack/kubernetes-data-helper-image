@@ -40,6 +40,8 @@ docker build --pull \
 
 The runtime base is pinned to the reviewed Ubuntu 26.04 `linux/amd64` manifest. Release evidence records the resulting image digest, SBOM, vulnerability scan, license inventory, and runtime tests.
 
+The release gate checks the complete runtime vulnerability report. Any available fixed version, unknown severity, High or Critical finding, or unreviewed finding blocks release. Only exact Low or Medium package findings with recorded official no-fix evidence in [`.github/runtime-unfixed.json`](.github/runtime-unfixed.json) may remain. These findings are tracked residual risk, not a vulnerability-free claim.
+
 ## Smoke test
 
 Run the image with the constraints supplied by the historical catalog and verify that it exits with status zero:
