@@ -90,7 +90,7 @@ jobs:
             evidence/runtime-security.json >/dev/null
           jq -e '[.Results[]?.Secrets[]?] | length == 0' evidence/runtime-security.json >/dev/null
           python3 .github/scripts/enforce-runtime-vulnerabilities.py \
-            evidence/runtime-security.json .github/runtime-unfixed.json \
+            --phase candidate \
             --repository "$GITHUB_REPOSITORY"
           sha256sum evidence/runtime-security.json evidence/runtime.cdx.json \
             evidence/runtime-ubuntu-packages.tsv | LC_ALL=C sort -k2 > evidence/SHA256SUMS
