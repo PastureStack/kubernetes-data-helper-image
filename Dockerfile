@@ -1,7 +1,7 @@
 ARG UBUNTU_IMAGE=ubuntu:26.04@sha256:2260313b31c8c011cd2eebe728008efac1b3982be73eb71348ea2648d2c0e09b
 FROM ${UBUNTU_IMAGE}
 
-ARG IMAGE_VERSION=v0.1.2
+ARG IMAGE_VERSION=v0.1.3
 ARG SOURCE_REVISION=unknown
 
 LABEL org.opencontainers.image.title="PastureStack/kubernetes-data-helper-image" \
@@ -14,7 +14,14 @@ LABEL org.opencontainers.image.title="PastureStack/kubernetes-data-helper-image"
 
 COPY LICENSE /usr/share/licenses/pasturestack-kubernetes-data-helper-image/LICENSE
 
-RUN rm -f /usr/bin/pebble
+ADD --checksum=sha256:5b6326f1932cfd7be57130561dc78192f09ed9f58bfbe6606ed0c50510c3b6cd \
+    https://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260816ubuntu0.26.04.1_all.deb \
+    /tmp/ca-certificates.deb
+RUN set -eux; \
+    dpkg -i /tmp/ca-certificates.deb; \
+    test "$(dpkg-query -W -f='${Version}' ca-certificates)" = 20260816ubuntu0.26.04.1; \
+    rm -f /tmp/ca-certificates.deb; \
+    rm -f /usr/bin/pebble
 
 USER 65532:65532
 ENTRYPOINT ["/bin/true"]
