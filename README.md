@@ -13,7 +13,7 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 The maintained release uses a pure numeric semantic version:
 
 ```text
-ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.2
+ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.3
 ```
 
 Release evidence records the immutable digest separately so a long digest never
@@ -22,13 +22,19 @@ historical evidence and must not be copied into new release names.
 
 ## Build
 
+Version 0.1.3 updates existing Ubuntu 26.04 packages to the official fixed
+versions in `ubuntu-security-packages.lock`. It does not add a CA package,
+OpenSSL executable, or other new runtime dependency. A temporary authenticated
+apt trust bundle is removed after the package update. The non-root, no-network,
+start-once and data-volume contracts are unchanged.
+
 Build the reviewed source tree:
 
 ```sh
 docker build --pull \
-  --build-arg IMAGE_VERSION=v0.1.2 \
+  --build-arg IMAGE_VERSION=v0.1.3 \
   --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" \
-  --tag local/pasturestack/kubernetes-data-helper-image:v0.1.2 \
+  --tag local/pasturestack/kubernetes-data-helper-image:v0.1.3 \
   .
 ```
 
@@ -42,7 +48,7 @@ Run the image with the constraints supplied by the historical catalog and verify
 docker run --rm \
   --network none \
   --volume pasturestack-kubernetes-data-helper-poc:/data \
-  local/pasturestack/kubernetes-data-helper-image:v0.1.2
+  local/pasturestack/kubernetes-data-helper-image:v0.1.3
 test "$?" -eq 0
 ```
 
