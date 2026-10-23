@@ -22,8 +22,11 @@ historical evidence and must not be copied into new release names.
 
 ## Build
 
-Version 0.1.3 installs the SHA256-pinned official Ubuntu CA security update.
-The non-root, no-network, start-once and data-volume contracts are unchanged.
+Version 0.1.3 updates existing Ubuntu 26.04 packages to the official fixed
+versions in `ubuntu-security-packages.lock`. It does not add a CA package,
+OpenSSL executable, or other new runtime dependency. A temporary authenticated
+apt trust bundle is removed after the package update. The non-root, no-network,
+start-once and data-volume contracts are unchanged.
 
 Build the reviewed source tree:
 
