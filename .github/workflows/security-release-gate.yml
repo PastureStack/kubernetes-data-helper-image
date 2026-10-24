@@ -40,12 +40,12 @@ jobs:
         run: |
           set -euo pipefail
           docker build --pull \
-            --build-arg IMAGE_VERSION=v0.1.3 \
+            --build-arg IMAGE_VERSION=v0.1.4 \
             --build-arg SOURCE_REVISION="$GITHUB_SHA" \
             --tag "$CANDIDATE_IMAGE" .
           test "$(docker image inspect --format '{{.Config.User}}' "$CANDIDATE_IMAGE")" = 65532:65532
           test "$(docker image inspect --format '{{json .Config.Entrypoint}}' "$CANDIDATE_IMAGE")" = '["/bin/true"]'
-          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$CANDIDATE_IMAGE")" = v0.1.3
+          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$CANDIDATE_IMAGE")" = v0.1.4
           test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$CANDIDATE_IMAGE")" = "$GITHUB_SHA"
           test "$(docker image inspect --format '{{json .Config.ExposedPorts}}' "$CANDIDATE_IMAGE")" = null
           volume="pasturestack-kdh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
@@ -74,13 +74,25 @@ jobs:
             --volume "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
             "$TRIVY_IMAGE" image --scanners vuln,secret \
             --exit-code 0 --format json \
-            --output /evidence/runtime-security.json "$CANDIDATE_IMAGE"
+            --output /evidence/runtime-security-raw.json "$CANDIDATE_IMAGE"
           docker run --rm \
             --volume /var/run/docker.sock:/var/run/docker.sock \
             --volume "$PWD/evidence:/evidence" \
             --volume "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
             "$TRIVY_IMAGE" image --format cyclonedx \
             --output /evidence/runtime.cdx.json "$CANDIDATE_IMAGE"
+          backports="$RUNNER_TEMP/kubernetes-data-helper-image-ubuntu-backports"
+          bash .github/scripts/collect-ubuntu-backport-evidence.sh \
+            "$CANDIDATE_IMAGE" "evidence/runtime.cdx.json" "$backports" \
+            > "evidence/ubuntu-backports-verification.json"
+          tar -C "$backports" -czf "evidence/ubuntu-backports.tar.gz" .
+          docker run --rm -v "$backports:/backports:ro" \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "$PWD/evidence:/evidence" \
+            --volume "$RUNNER_TEMP/trivy-cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image --vex /backports/openvex.json --skip-db-update --scanners vuln,secret \
+            --exit-code 0 --format json \
+            --output /evidence/runtime-security.json "$CANDIDATE_IMAGE"
           docker run --rm --entrypoint /usr/bin/dpkg-query "$CANDIDATE_IMAGE" \
             -W '-f=${binary:Package}\t${Version}\n' \
             | LC_ALL=C sort > evidence/runtime-ubuntu-packages.tsv
@@ -92,7 +104,7 @@ jobs:
           python3 .github/scripts/enforce-runtime-vulnerabilities.py \
             --phase candidate \
             --repository "$GITHUB_REPOSITORY"
-          sha256sum evidence/runtime-security.json evidence/runtime.cdx.json \
+          sha256sum evidence/runtime-security-raw.json evidence/ubuntu-backports-verification.json evidence/ubuntu-backports.tar.gz evidence/runtime-security.json evidence/runtime.cdx.json \
             evidence/runtime-ubuntu-packages.tsv | LC_ALL=C sort -k2 > evidence/SHA256SUMS
 
       - name: Upload reviewed evidence

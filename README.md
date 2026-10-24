@@ -1,5 +1,9 @@
 # PastureStack Kubernetes Data Helper Image
 
+Linux source candidate **`v0.1.4`** consumes verified Ubuntu security backports without adding runtime packages or changing the host's coreutils provider. Publication and integration checks must complete before deployment.
+
+The runtime recipe applies the qualified Ubuntu 26.04 backport bundle only to already-installed packages and preserves the selected coreutils provider. The immutable bundle digest and final-image checks are pending. Bundle manifests, qualification, exact-version OpenVEX, source inputs and install/verify receipts are retained under `/usr/share/pasturestack/security/ubuntu-backports/`; raw scan evidence and the existing full-severity release policy remain required.
+
 `PastureStack/kubernetes-data-helper-image` is a minimal, one-shot container image for the legacy Kubernetes data-volume helper contract.
 
 The container runs `/bin/true` as numeric user and group `65532:65532`, requires no network access, and exits successfully. It does not declare a volume itself; the historical catalog contract mounts `/data` and supplies the start-once behavior.
@@ -10,10 +14,10 @@ PastureStack is an independent community effort to preserve, audit, and moderniz
 
 ## Release image
 
-The maintained release uses a pure numeric semantic version:
+After publication, use the candidate image with its pure numeric semantic version:
 
 ```text
-ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.3
+ghcr.io/pasturestack/kubernetes-data-helper-image:v0.1.4
 ```
 
 Release evidence records the immutable digest separately so a long digest never
@@ -22,7 +26,7 @@ historical evidence and must not be copied into new release names.
 
 ## Build
 
-Version 0.1.3 updates existing Ubuntu 26.04 packages to the official fixed
+The recipe updates existing Ubuntu 26.04 packages to the official fixed
 versions in `ubuntu-security-packages.lock`. It does not add a CA package,
 OpenSSL executable, or other new runtime dependency. A temporary authenticated
 apt trust bundle is removed after the package update. The non-root, no-network,
@@ -32,9 +36,9 @@ Build the reviewed source tree:
 
 ```sh
 docker build --pull \
-  --build-arg IMAGE_VERSION=v0.1.3 \
+  --build-arg IMAGE_VERSION=v0.1.4 \
   --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" \
-  --tag local/pasturestack/kubernetes-data-helper-image:v0.1.3 \
+  --tag local/pasturestack/kubernetes-data-helper-image:v0.1.4 \
   .
 ```
 
@@ -50,7 +54,7 @@ Run the image with the constraints supplied by the historical catalog and verify
 docker run --rm \
   --network none \
   --volume pasturestack-kubernetes-data-helper-poc:/data \
-  local/pasturestack/kubernetes-data-helper-image:v0.1.3
+  local/pasturestack/kubernetes-data-helper-image:v0.1.4
 test "$?" -eq 0
 ```
 
